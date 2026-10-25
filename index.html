@@ -49,19 +49,23 @@ function ranked(c){const max=Math.max(...c),min=Math.min(...c);return {max,min,h
 function timeLabel(epoch){const d=epoch?new Date(epoch*1000):new Date();return d.toLocaleTimeString();}
 function onTick(quote,epoch,pipSize){
  const d=digitFromQuote(quote,pipSize);if(d===null)return;
+ const incomingEpoch=epoch||Date.now()/1000;
+ const incomingQuote=String(quote);
+ const last=state.ticks[state.ticks.length-1];
+ // De-duplicate before resolving a pending forecast; duplicate messages must never count as a new outcome.
+ if(last && last.epoch===incomingEpoch && last.quote===incomingQuote)return;
  if(state.pending){
   const p=state.pending;
   state.records.unshift({id:state.records.length?Math.max(...state.records.map(r=>r.id))+1:1,pred:p.digit,actual:d,win:p.digit===d,count:p.count,window:p.window,time:timeLabel(epoch)});
   if(state.records.length>250)state.records.length=250;
   state.pending=null;
  }
- const entry={quote:String(quote),digit:d,epoch:epoch||Date.now()/1000};
- const last=state.ticks[state.ticks.length-1];
- if(last && last.epoch===entry.epoch && last.quote===entry.quote)return;
+ const entry={quote:incomingQuote,digit:d,epoch:incomingEpoch};
  state.ticks.push(entry);if(state.ticks.length>state.window)state.ticks.shift();
- state.lastQuote=String(quote);state.lastDigit=d;
+ state.lastQuote=incomingQuote;state.lastDigit=d;
  const c=counts(),r=ranked(c);
- if(state.ticks.length>0){let best=r.hot[0];state.pending={digit:best,count:c[best],window:state.ticks.length};}
+ // Only score genuine next-tick forecasts after the full selected window has been collected.
+ if(state.ticks.length>=state.window){let best=r.hot[0];state.pending={digit:best,count:c[best],window:state.ticks.length};}else{state.pending=null;}
  render();showError('');
 }
 function render(){
@@ -72,7 +76,7 @@ function render(){
  $('mCold').textContent=n?r.cold.join(', '):'—';$('mColdSub').textContent=n?r.min+' hits · '+share(r.cold[0]).toFixed(1)+'% observed share':'Waiting for ticks';
  const wins=state.records.filter(x=>x.win).length,losses=state.records.length-wins,acc=state.records.length?wins/state.records.length*100:null;
  $('mAccuracy').textContent=acc===null?'—':acc.toFixed(1)+'%';$('mAccuracySub').textContent=state.records.length+' resolved predictions';
- $('candidateNum').textContent=n?r.hot[0]:'—';$('candidateText').textContent=n?'Digit '+r.hot[0]+' leads current counts ('+r.max+' of '+n+' ticks). Tied leaders: '+r.hot.join(', '):'Waiting for enough ticks.';
+ $('candidateNum').textContent=n?r.hot[0]:'—';$('candidateText').textContent=n?(n<state.window?'Collecting window: '+n+' / '+state.window+' ticks. Candidate is provisional.':'Digit '+r.hot[0]+' leads current counts ('+r.max+' of '+n+' ticks). Tied leaders: '+r.hot.join(', ')):'Waiting for enough ticks.';
  $('candidateShare').textContent='Observed share: '+(n?share(r.hot[0]).toFixed(2)+'%':'—')+' · not next-tick probability';
  $('digitGrid').innerHTML=Array.from({length:10},(_,i)=>{const tags=[];if(r.hot.includes(i)&&n)tags.push('MOST');if(r.cold.includes(i)&&n)tags.push('LEAST');if(last&&last.digit===i)tags.push('NOW');return '<div class="digit '+(r.hot.includes(i)&&n?'hot ':'')+(r.cold.includes(i)&&n?'cold ':'')+(last&&last.digit===i?'current':'')+'"><div class="tag">'+(tags.join(' · ')||'&nbsp;')+'</div><div class="n">'+i+'</div><div class="pct">'+share(i).toFixed(1)+'%</div><div class="cnt">'+c[i]+' / '+n+'</div><div class="seen">'+lastSeen(i)+'</div></div>';}).join('');
  $('bars').innerHTML=Array.from({length:10},(_,i)=>({i,v:share(i)})).sort((a,b)=>b.v-a.v).map(x=>'<div class="barrow"><span>'+x.i+'</span><div class="bar"><i style="width:'+x.v+'%"></i></div><b>'+x.v.toFixed(1)+'%</b></div>').join('');
@@ -98,12 +102,14 @@ function drawRadar(c,r,current,n){
 function disconnect(){if(state.ws){try{state.ws.onclose=null;state.ws.close();}catch(e){}}state.ws=null;state.connected=false;state.pending=null;setStatus('Disconnected',false);showError('');}
 function connect(){
  disconnect();showError('');
+ if(!('WebSocket' in window)){setStatus('WebSocket unavailable',false);showError('This browser does not support WebSocket connections. Try an updated Chrome browser.');return;}
  const app=$('appId').value.trim(),market=$('market').value;
  if(!/^\d+$/.test(app)){showError('Enter the numeric App ID from your Deriv developer application. The connection has not been started.');return;}
  state.window=Number($('window').value)||80;state.ticks=[];state.records=[];state.pending=null;state.lastQuote=null;state.lastDigit=null;state.market=market;render();
  setStatus('Connecting…',false);$('feedState').textContent='Opening WebSocket';
  let ws;try{ws=new WebSocket('wss://ws.derivws.com/websockets/v3?app_id='+encodeURIComponent(app));}catch(e){setStatus('Connection failed');showError('Could not create WebSocket: '+e.message);return;}state.ws=ws;
- ws.onopen=()=>{if(state.ws!==ws)return;state.connected=true;setStatus('Connected · loading history',true);ws.send(JSON.stringify({ticks_history:market,count:state.window,end:'latest',style:'ticks',subscribe:1,req_id:++state.req}));};
+ const connectTimeout=setTimeout(()=>{if(state.ws===ws&&ws.readyState!==WebSocket.OPEN){showError('Connection timed out. Check your internet connection and try again.');try{ws.close();}catch(e){}}},12000);
+ ws.onopen=()=>{if(state.ws!==ws)return;clearTimeout(connectTimeout);state.connected=true;setStatus('Connected · loading history',true);ws.send(JSON.stringify({ticks_history:market,count:state.window,end:'latest',style:'ticks',subscribe:1,req_id:++state.req}));};
  ws.onmessage=ev=>{if(state.ws!==ws)return;let data;try{data=JSON.parse(ev.data);}catch(e){return;}
   if(data.error){showError('Deriv API error: '+(data.error.message||'Unknown error')+' ('+(data.error.code||'no code')+')');if(data.error.code==='InvalidAppID'||data.error.code==='AuthorizationRequired'){setStatus('App ID error',false);}return;}
   if(data.msg_type==='history'){
@@ -111,13 +117,16 @@ function connect(){
    state.ticks=[];prices.forEach((q,i)=>{const d=digitFromQuote(q,null);if(d!==null)state.ticks.push({quote:String(q),digit:d,epoch:times[i]||Date.now()/1000});});
    state.ticks=state.ticks.slice(-state.window);state.lastQuote=state.ticks.length?state.ticks[state.ticks.length-1].quote:null;state.lastDigit=state.ticks.length?state.ticks[state.ticks.length-1].digit:null;
    if(data.subscription)state.subscriptionId=data.subscription.id;
-   state.pending=null;render();setStatus('Live · '+market,true);$('feedState').textContent='History loaded; live stream subscribed';showError('');
+   state.pending=null;
+   // The loaded history is information already available before the next live tick.
+   if(state.ticks.length>=state.window){const c=counts(),r=ranked(c),best=r.hot[0];state.pending={digit:best,count:c[best],window:state.ticks.length};}
+   render();setStatus('Live · '+market,true);$('feedState').textContent='History loaded; live stream subscribed';showError('');
   }else if(data.msg_type==='tick'){
    if(data.tick&&data.tick.symbol===state.market){onTick(data.tick.quote,data.tick.epoch,data.tick.pip_size);setStatus('Live · '+market,true);}
   }else if(data.msg_type==='ping'){}
  };
  ws.onerror=()=>{if(state.ws===ws){setStatus('WebSocket error',false);showError('The WebSocket failed. Check internet access, App ID, and whether the Deriv endpoint is reachable.');}};
- ws.onclose=ev=>{if(state.ws!==ws)return;state.connected=false;setStatus('Disconnected',false);$('feedState').textContent='Closed · code '+ev.code; if(ev.code!==1000)showError('Connection closed (code '+ev.code+'). Check your network and App ID, then reconnect.');};
+ ws.onclose=ev=>{clearTimeout(connectTimeout);if(state.ws!==ws)return;state.connected=false;setStatus('Disconnected',false);$('feedState').textContent='Closed · code '+ev.code; if(ev.code!==1000)showError('Connection closed (code '+ev.code+'). Check your network and App ID, then reconnect.');};
 }
 $('connectBtn').addEventListener('click',connect);$('disconnectBtn').addEventListener('click',disconnect);
 $('market').addEventListener('change',()=>{if(state.connected)connect();});
