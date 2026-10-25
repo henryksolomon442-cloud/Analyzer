@@ -171,7 +171,7 @@ function connect(){
  ws.onerror=()=>{if(state.ws===ws){setStatus('WebSocket error',false);showError('The WebSocket failed. Check internet access, App ID, and whether the Deriv endpoint is reachable.');}};
  ws.onclose=ev=>{clearTimeout(connectTimeout);if(state.ws!==ws)return;state.connected=false;setStatus('Disconnected',false);$('feedState').textContent='Closed · code '+ev.code; if(ev.code!==1000)showError('Connection closed (code '+ev.code+'). Check your network and App ID, then reconnect.');};
 }
-$('connectBtn').addEventListener('click',connect);$('disconnectBtn').addEventListener('click',disconnect);$('scanBtn').addEventListener('click',()=>{const app=$('appId').value.trim();if(!/^\\d+$/.test(app)){showError('Enter the numeric Deriv App ID first.');return;}state.window=Number($('window').value)||80;startMarketScan(app);});
+$('connectBtn').addEventListener('click',connect);$('disconnectBtn').addEventListener('click',disconnect);$('scanBtn').addEventListener('click',()=>{const app=$('appId').value.trim();if(!/^\d+$/.test(app)){showError('Enter the numeric Deriv App ID first.');return;}state.window=Number($('window').value)||80;startMarketScan(app);});
 $('market').addEventListener('change',()=>{if(state.connected)connect();});
 $('window').addEventListener('change',()=>{if(state.connected)connect();else{state.window=Number($('window').value)||80;state.ticks=state.ticks.slice(-state.window);render();}});
 $('resetBtn').addEventListener('click',()=>{state.records=[];state.pending=null;render();});
