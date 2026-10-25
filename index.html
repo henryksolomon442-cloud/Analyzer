@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Digit Frequency Radar — 80 Tick</title>
+<style>
+:root{color-scheme:dark;--bg:#08111e;--panel:#101d2d;--line:#25384e;--muted:#9db0c6;--text:#edf5ff;--blue:#43a5ff;--green:#40d69a;--red:#ff647c;--amber:#ffcc66}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#142740 0,#08111e 58%);color:var(--text);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}main{max-width:1180px;margin:auto;padding:18px 14px 36px}.top{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}.brand h1{font-size:clamp(22px,4vw,32px);margin:0}.brand p{color:var(--muted);margin:4px 0 0}.pill{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:#0b1726;border-radius:999px;padding:7px 12px;color:var(--muted);font-size:13px}.dot{width:8px;height:8px;border-radius:50%;background:#7e8da0}.dot.live{background:var(--green);box-shadow:0 0 10px #40d69a88}.panel{background:linear-gradient(145deg,#132338ee,#0d1929ee);border:1px solid var(--line);border-radius:18px;padding:16px;margin-top:14px;box-shadow:0 12px 28px #0002}.controls{display:grid;grid-template-columns:1.4fr 1fr auto auto;gap:10px;align-items:end}.field label{display:block;color:var(--muted);font-size:12px;margin:0 0 5px}.field input,.field select{width:100%;min-width:0;background:#081522;color:var(--text);border:1px solid #30465f;border-radius:10px;padding:11px 10px;font:inherit}.btn{border:0;border-radius:10px;padding:11px 16px;font-weight:750;cursor:pointer;color:#041322;background:var(--blue)}.btn.secondary{background:#24384e;color:var(--text);border:1px solid #3b526b}.btn:disabled{opacity:.45;cursor:not-allowed}.statusline{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:12px;color:var(--muted);font-size:13px}.error{color:var(--red);white-space:pre-wrap;overflow-wrap:anywhere}.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.metric{border:1px solid var(--line);background:#0b1726;border-radius:14px;padding:13px}.metric .k{color:var(--muted);font-size:12px}.metric .v{font-size:24px;font-weight:800;margin-top:3px}.metric .s{color:var(--muted);font-size:12px}.sectionhead{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}.sectionhead h2{font-size:17px;margin:0}.small{font-size:12px;color:var(--muted)}.radarwrap{display:grid;grid-template-columns:minmax(260px,1fr) minmax(230px,.8fr);gap:18px;align-items:center}.radar{width:100%;max-width:450px;margin:auto;display:block}.legend{display:flex;gap:12px;flex-wrap:wrap;color:var(--muted);font-size:12px;margin-top:8px}.legend span{display:flex;align-items:center;gap:5px}.swatch{width:9px;height:9px;border-radius:50%}.digitgrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}.digit{border:1px solid var(--line);border-radius:12px;padding:10px 6px;text-align:center;background:#0a1625;position:relative;min-width:0}.digit .n{font-size:23px;font-weight:850}.digit .pct{font-size:14px;font-weight:750}.digit .cnt,.digit .seen{font-size:11px;color:var(--muted)}.digit.hot{border-color:#40d69a99}.digit.cold{border-color:#ff647c99}.digit.current{outline:2px solid var(--blue);outline-offset:1px}.digit .tag{font-size:9px;letter-spacing:.4px;font-weight:800}.split{display:grid;grid-template-columns:1fr 1fr;gap:12px}.candidate{border:1px solid #3c755f;background:#0b241f;border-radius:14px;padding:14px}.candidate .num{font-size:40px;font-weight:900;color:var(--green);line-height:1.1}.candidate p{margin:5px 0;color:var(--muted);font-size:13px}.barrow{display:grid;grid-template-columns:24px 1fr 50px;gap:8px;align-items:center;margin:9px 0}.bar{height:9px;background:#213248;border-radius:999px;overflow:hidden}.bar i{display:block;height:100%;background:var(--blue);border-radius:999px}.barrow b{font-size:12px;text-align:right}.tablewrap{overflow:auto}table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:9px 8px;border-bottom:1px solid #25384e;white-space:nowrap}th{color:var(--muted);font-weight:600}.win{color:var(--green)}.loss{color:var(--red)}.neutral{color:var(--amber)}.note{font-size:12px;color:var(--muted);line-height:1.55}.footer{padding:14px 4px;color:var(--muted);font-size:12px}.badge{border-radius:6px;padding:3px 6px;background:#203248;font-size:11px;color:#c8d9ea}
+@media(max-width:760px){.controls{grid-template-columns:1fr 1fr}.controls .wide{grid-column:1/-1}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.radarwrap{grid-template-columns:1fr}.radar{max-width:340px}.split{grid-template-columns:1fr}.panel{padding:13px}}
+</style>
+</head>
+<body><main>
+<header class="top"><div class="brand"><h1>◉ Digit Frequency Radar</h1><p>Live Deriv market feed · rolling 80-tick window · Matches candidate tracker</p></div><div class="pill"><span id="statusDot" class="dot"></span><span id="statusText">Disconnected</span></div></header>
+<section class="panel"><div class="controls">
+<div class="field wide"><label for="appId">Deriv App ID (required)</label><input id="appId" inputmode="numeric" placeholder="Enter your numeric Deriv App ID" autocomplete="off"></div>
+<div class="field"><label for="market">Market</label><select id="market"><option value="1HZ25V">Volatility 25 (1s) · 1HZ25V</option><option value="R_25">Volatility 25 · R_25</option><option value="1HZ50V">Volatility 50 (1s) · 1HZ50V</option><option value="R_50">Volatility 50 · R_50</option><option value="1HZ75V">Volatility 75 (1s) · 1HZ75V</option><option value="R_75">Volatility 75 · R_75</option><option value="1HZ100V">Volatility 100 (1s) · 1HZ100V</option><option value="R_100">Volatility 100 · R_100</option><option value="1HZ10V">Volatility 10 (1s) · 1HZ10V</option><option value="R_10">Volatility 10 · R_10</option></select></div>
+<div class="field"><label for="window">Analysis window</label><select id="window"><option value="80" selected>80 ticks</option><option value="150">150 ticks</option><option value="250">250 ticks</option></select></div>
+<button id="connectBtn" class="btn">Connect live</button><button id="disconnectBtn" class="btn secondary" disabled>Disconnect</button>
+</div><div class="statusline"><span>Feed:</span><b id="feedState">Not connected</b><span>·</span><span>Ticks loaded:</span><b id="loaded">0</b><span>·</span><span>Last quote:</span><b id="quote">—</b><span>·</span><span>Last digit:</span><b id="lastDigit">—</b></div><div id="error" class="statusline error" role="status"></div></section>
+<section class="panel"><div class="metrics">
+<div class="metric"><div class="k">Current digit</div><div id="mCurrent" class="v">—</div><div class="s">Most recent live tick</div></div>
+<div class="metric"><div class="k">Most frequent</div><div id="mHot" class="v">—</div><div id="mHotSub" class="s">Waiting for ticks</div></div>
+<div class="metric"><div class="k">Least frequent</div><div id="mCold" class="v">—</div><div id="mColdSub" class="s">Waiting for ticks</div></div>
+<div class="metric"><div class="k">Next-tick test</div><div id="mAccuracy" class="v">—</div><div id="mAccuracySub" class="s">0 resolved predictions</div></div>
+</div></section>
+<section class="panel"><div class="sectionhead"><h2>80-tick circular radar</h2><span class="badge" id="windowLabel">Window: 80 ticks</span></div><div class="radarwrap"><div><svg id="radar" class="radar" viewBox="0 0 400 400" role="img" aria-label="Circular digit frequency radar"><circle cx="200" cy="200" r="154" fill="#0a1726" stroke="#30465f"/><circle cx="200" cy="200" r="112" fill="none" stroke="#263b52" stroke-dasharray="3 5"/><circle cx="200" cy="200" r="70" fill="none" stroke="#263b52" stroke-dasharray="3 5"/><g id="radarLines"></g><g id="radarDigits"></g><circle cx="200" cy="200" r="48" fill="#12263a" stroke="#30465f"/><text x="200" y="190" text-anchor="middle" fill="#9db0c6" font-size="12">LATEST DIGIT</text><text id="centerDigit" x="200" y="230" text-anchor="middle" fill="#edf5ff" font-size="40" font-weight="800">—</text></svg><div class="legend"><span><i class="swatch" style="background:var(--green)"></i>Most frequent</span><span><i class="swatch" style="background:var(--red)"></i>Least frequent</span><span><i class="swatch" style="background:var(--blue)"></i>Current digit</span></div></div><div><div class="sectionhead"><h2>Digit counts & shares</h2><span class="small">Percent = count / loaded window</span></div><div id="digitGrid" class="digitgrid" style="margin-top:12px"></div><p class="note">These percentages describe the observed window only. They are not calibrated probabilities that a digit will appear next. If counts tie, the radar marks tied digits.</p></div></div></section>
+<section class="panel"><div class="sectionhead"><h2>Matches candidate</h2><span class="badge">One digit · next-tick test</span></div><div class="split" style="margin-top:12px"><div class="candidate"><div class="small">Current frequency leader · NOT a guarantee</div><div id="candidateNum" class="num">—</div><p id="candidateText">Waiting for enough ticks.</p><p id="candidateShare">Observed share: —</p></div><div><div class="small">Recent frequency distribution</div><div id="bars" style="margin-top:8px"></div></div></div><p class="note" style="margin-top:12px">Testing rule: after a candidate is selected from the current window, the next incoming tick is scored against that frozen candidate before the window updates. This avoids scoring a prediction against data that was not yet known. Results are for analysis only; no contracts are purchased.</p></section>
+<section class="panel"><div class="sectionhead"><h2>Out-of-sample prediction record</h2><span class="badge" id="recordCount">0 records</span></div><div class="metrics" style="margin-top:12px"><div class="metric"><div class="k">Correct</div><div id="wins" class="v">0</div></div><div class="metric"><div class="k">Incorrect</div><div id="losses" class="v">0</div></div><div class="metric"><div class="k">Observed hit rate</div><div id="hitRate" class="v">—</div></div><div class="metric"><div class="k">Baseline reference</div><div class="v">10%</div><div class="s">If digits were uniform and independent</div></div></div><div class="tablewrap" style="margin-top:12px"><table><thead><tr><th>#</th><th>Candidate</th><th>Actual next digit</th><th>Result</th><th>Leader count</th><th>Window at prediction</th><th>Time</th></tr></thead><tbody id="recordRows"><tr><td colspan="7" class="small">Connect and collect ticks to begin testing.</td></tr></tbody></table></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button id="exportBtn" class="btn secondary">Export CSV</button><button id="resetBtn" class="btn secondary">Reset test records</button></div></section>
+<section class="panel"><div class="sectionhead"><h2>Recent ticks</h2><span class="small">Newest first · price and extracted last digit</span></div><div class="tablewrap" style="margin-top:8px"><table><thead><tr><th>Time</th><th>Quote</th><th>Digit</th></tr></thead><tbody id="tickRows"><tr><td colspan="3" class="small">No ticks received yet.</td></tr></tbody></table></div></section>
+<div class="footer">Standalone analysis dashboard. Uses public Deriv market data via WebSocket; no account token is requested. This page does not place trades. Keep your App ID private if desired. Live connection depends on a valid Deriv App ID, network access, and symbol availability.</div>
+</main>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const state={ws:null,ticks:[],records:[],pending:null,connected:false,req:0,window:80,lastQuote:null,lastDigit:null,market:null};
+function setStatus(text,live=false){$('statusText').textContent=text;$('statusDot').className='dot'+(live?' live':'');$('feedState').textContent=text;$('connectBtn').disabled=live;$('disconnectBtn').disabled=!live;}
+function showError(s){$('error').textContent=s||'';}
+function digitFromQuote(quote,pipSize){
+ let n=Number(quote);if(!Number.isFinite(n))return null;
+ let decimals=Number.isInteger(pipSize)?pipSize:null;
+ if(decimals===null){const str=String(quote);decimals=(str.split('.')[1]||'').length;}
+ const fixed=n.toFixed(Math.max(0,Math.min(10,decimals)));
+ const ds=fixed.replace(/\D/g,'');
+ return ds.length?Number(ds[ds.length-1]):null;
+}
+function send(o){if(state.ws&&state.ws.readyState===WebSocket.OPEN)state.ws.send(JSON.stringify(o));}
+function counts(){const c=Array(10).fill(0);state.ticks.forEach(t=>c[t.digit]++);return c;}
+function ranked(c){const max=Math.max(...c),min=Math.min(...c);return {max,min,hot:c.map((n,i)=>n===max?i:null).filter(x=>x!==null),cold:c.map((n,i)=>n===min?i:null).filter(x=>x!==null)};}
+function timeLabel(epoch){const d=epoch?new Date(epoch*1000):new Date();return d.toLocaleTimeString();}
+function onTick(quote,epoch,pipSize){
+ const d=digitFromQuote(quote,pipSize);if(d===null)return;
+ if(state.pending){
+  const p=state.pending;
+  state.records.unshift({id:state.records.length?Math.max(...state.records.map(r=>r.id))+1:1,pred:p.digit,actual:d,win:p.digit===d,count:p.count,window:p.window,time:timeLabel(epoch)});
+  if(state.records.length>250)state.records.length=250;
+  state.pending=null;
+ }
+ const entry={quote:String(quote),digit:d,epoch:epoch||Date.now()/1000};
+ const last=state.ticks[state.ticks.length-1];
+ if(last && last.epoch===entry.epoch && last.quote===entry.quote)return;
+ state.ticks.push(entry);if(state.ticks.length>state.window)state.ticks.shift();
+ state.lastQuote=String(quote);state.lastDigit=d;
+ const c=counts(),r=ranked(c);
+ if(state.ticks.length>0){let best=r.hot[0];state.pending={digit:best,count:c[best],window:state.ticks.length};}
+ render();showError('');
+}
+function render(){
+ const n=state.ticks.length,c=counts(),r=ranked(c),last=state.ticks[state.ticks.length-1];
+ $('loaded').textContent=n+' / '+state.window;$('quote').textContent=state.lastQuote??'—';$('lastDigit').textContent=state.lastDigit??'—';$('windowLabel').textContent='Window: '+state.window+' ticks';$('mCurrent').textContent=last?last.digit:'—';$('centerDigit').textContent=last?last.digit:'—';
+ const share=i=>n?(c[i]/n*100):0;
+ $('mHot').textContent=n?r.hot.join(', '):'—';$('mHotSub').textContent=n?r.max+' hits · '+share(r.hot[0]).toFixed(1)+'% observed share':'Waiting for ticks';
+ $('mCold').textContent=n?r.cold.join(', '):'—';$('mColdSub').textContent=n?r.min+' hits · '+share(r.cold[0]).toFixed(1)+'% observed share':'Waiting for ticks';
+ const wins=state.records.filter(x=>x.win).length,losses=state.records.length-wins,acc=state.records.length?wins/state.records.length*100:null;
+ $('mAccuracy').textContent=acc===null?'—':acc.toFixed(1)+'%';$('mAccuracySub').textContent=state.records.length+' resolved predictions';
+ $('candidateNum').textContent=n?r.hot[0]:'—';$('candidateText').textContent=n?'Digit '+r.hot[0]+' leads current counts ('+r.max+' of '+n+' ticks). Tied leaders: '+r.hot.join(', '):'Waiting for enough ticks.';
+ $('candidateShare').textContent='Observed share: '+(n?share(r.hot[0]).toFixed(2)+'%':'—')+' · not next-tick probability';
+ $('digitGrid').innerHTML=Array.from({length:10},(_,i)=>{const tags=[];if(r.hot.includes(i)&&n)tags.push('MOST');if(r.cold.includes(i)&&n)tags.push('LEAST');if(last&&last.digit===i)tags.push('NOW');return '<div class="digit '+(r.hot.includes(i)&&n?'hot ':'')+(r.cold.includes(i)&&n?'cold ':'')+(last&&last.digit===i?'current':'')+'"><div class="tag">'+(tags.join(' · ')||'&nbsp;')+'</div><div class="n">'+i+'</div><div class="pct">'+share(i).toFixed(1)+'%</div><div class="cnt">'+c[i]+' / '+n+'</div><div class="seen">'+lastSeen(i)+'</div></div>';}).join('');
+ $('bars').innerHTML=Array.from({length:10},(_,i)=>({i,v:share(i)})).sort((a,b)=>b.v-a.v).map(x=>'<div class="barrow"><span>'+x.i+'</span><div class="bar"><i style="width:'+x.v+'%"></i></div><b>'+x.v.toFixed(1)+'%</b></div>').join('');
+ drawRadar(c,r,last?last.digit:null,n);
+ $('wins').textContent=wins;$('losses').textContent=losses;$('hitRate').textContent=acc===null?'—':acc.toFixed(2)+'%';$('recordCount').textContent=state.records.length+' records';
+ $('recordRows').innerHTML=state.records.length?state.records.slice(0,30).map(x=>'<tr><td>'+x.id+'</td><td>'+x.pred+'</td><td>'+x.actual+'</td><td class="'+(x.win?'win':'loss')+'">'+(x.win?'HIT':'MISS')+'</td><td>'+x.count+'</td><td>'+x.window+'</td><td>'+x.time+'</td></tr>').join(''):'<tr><td colspan="7" class="small">Connect and collect ticks to begin testing.</td></tr>';
+ $('tickRows').innerHTML=state.ticks.slice().reverse().slice(0,20).map(t=>'<tr><td>'+timeLabel(t.epoch)+'</td><td>'+t.quote+'</td><td><b>'+t.digit+'</b></td></tr>').join('')||'<tr><td colspan="3" class="small">No ticks received yet.</td></tr>';
+}
+function lastSeen(d){for(let i=state.ticks.length-1,j=0;i>=0;i--,j++){if(state.ticks[i].digit===d)return j===0?'just now':j+' ticks ago';}return 'not in window';}
+function drawRadar(c,r,current,n){
+ const ns='http://www.w3.org/2000/svg',lines=$('radarLines'),digits=$('radarDigits');lines.innerHTML='';digits.innerHTML='';
+ for(let i=0;i<10;i++){
+  const a=(-90+i*36)*Math.PI/180, x1=200+Math.cos(a)*60,y1=200+Math.sin(a)*60,x2=200+Math.cos(a)*151,y2=200+Math.sin(a)*151;
+  const line=document.createElementNS(ns,'line');line.setAttribute('x1',x1);line.setAttribute('y1',y1);line.setAttribute('x2',x2);line.setAttribute('y2',y2);line.setAttribute('stroke','#263b52');lines.appendChild(line);
+  const radius=115+(n?Math.max(0,c[i]/Math.max(1,...c))*23:0),cx=200+Math.cos(a)*radius,cy=200+Math.sin(a)*radius;
+  const g=document.createElementNS(ns,'g');const circ=document.createElementNS(ns,'circle');circ.setAttribute('cx',cx);circ.setAttribute('cy',cy);circ.setAttribute('r',current===i?23:20);
+  let fill='#152a40';if(n&&r.hot.includes(i))fill='#144b3b';if(n&&r.cold.includes(i))fill='#4a2330';if(current===i)fill='#123d64';
+  circ.setAttribute('fill',fill);circ.setAttribute('stroke',current===i?'#43a5ff':r.hot.includes(i)&&n?'#40d69a':r.cold.includes(i)&&n?'#ff647c':'#40556b');circ.setAttribute('stroke-width',current===i?'3':'1.5');g.appendChild(circ);
+  const t=document.createElementNS(ns,'text');t.setAttribute('x',cx);t.setAttribute('y',cy+6);t.setAttribute('text-anchor','middle');t.setAttribute('font-size','17');t.setAttribute('font-weight','800');t.setAttribute('fill','#edf5ff');t.textContent=i;g.appendChild(t);
+  const p=document.createElementNS(ns,'text');p.setAttribute('x',200+Math.cos(a)*172);p.setAttribute('y',204+Math.sin(a)*172);p.setAttribute('text-anchor','middle');p.setAttribute('font-size','11');p.setAttribute('fill','#9db0c6');p.textContent=n?(c[i]/n*100).toFixed(0)+'%':'—';g.appendChild(p);digits.appendChild(g);
+ }
+}
+function disconnect(){if(state.ws){try{state.ws.onclose=null;state.ws.close();}catch(e){}}state.ws=null;state.connected=false;state.pending=null;setStatus('Disconnected',false);showError('');}
+function connect(){
+ disconnect();showError('');
+ const app=$('appId').value.trim(),market=$('market').value;
+ if(!/^\d+$/.test(app)){showError('Enter the numeric App ID from your Deriv developer application. The connection has not been started.');return;}
+ state.window=Number($('window').value)||80;state.ticks=[];state.records=[];state.pending=null;state.lastQuote=null;state.lastDigit=null;state.market=market;render();
+ setStatus('Connecting…',false);$('feedState').textContent='Opening WebSocket';
+ let ws;try{ws=new WebSocket('wss://ws.derivws.com/websockets/v3?app_id='+encodeURIComponent(app));}catch(e){setStatus('Connection failed');showError('Could not create WebSocket: '+e.message);return;}state.ws=ws;
+ ws.onopen=()=>{if(state.ws!==ws)return;state.connected=true;setStatus('Connected · loading history',true);ws.send(JSON.stringify({ticks_history:market,count:state.window,end:'latest',style:'ticks',subscribe:1,req_id:++state.req}));};
+ ws.onmessage=ev=>{if(state.ws!==ws)return;let data;try{data=JSON.parse(ev.data);}catch(e){return;}
+  if(data.error){showError('Deriv API error: '+(data.error.message||'Unknown error')+' ('+(data.error.code||'no code')+')');if(data.error.code==='InvalidAppID'||data.error.code==='AuthorizationRequired'){setStatus('App ID error',false);}return;}
+  if(data.msg_type==='history'){
+   const prices=data.history&&data.history.prices||[],times=data.history&&data.history.times||[];
+   state.ticks=[];prices.forEach((q,i)=>{const d=digitFromQuote(q,null);if(d!==null)state.ticks.push({quote:String(q),digit:d,epoch:times[i]||Date.now()/1000});});
+   state.ticks=state.ticks.slice(-state.window);state.lastQuote=state.ticks.length?state.ticks[state.ticks.length-1].quote:null;state.lastDigit=state.ticks.length?state.ticks[state.ticks.length-1].digit:null;
+   if(data.subscription)state.subscriptionId=data.subscription.id;
+   state.pending=null;render();setStatus('Live · '+market,true);$('feedState').textContent='History loaded; live stream subscribed';showError('');
+  }else if(data.msg_type==='tick'){
+   if(data.tick&&data.tick.symbol===state.market){onTick(data.tick.quote,data.tick.epoch,data.tick.pip_size);setStatus('Live · '+market,true);}
+  }else if(data.msg_type==='ping'){}
+ };
+ ws.onerror=()=>{if(state.ws===ws){setStatus('WebSocket error',false);showError('The WebSocket failed. Check internet access, App ID, and whether the Deriv endpoint is reachable.');}};
+ ws.onclose=ev=>{if(state.ws!==ws)return;state.connected=false;setStatus('Disconnected',false);$('feedState').textContent='Closed · code '+ev.code; if(ev.code!==1000)showError('Connection closed (code '+ev.code+'). Check your network and App ID, then reconnect.');};
+}
+$('connectBtn').addEventListener('click',connect);$('disconnectBtn').addEventListener('click',disconnect);
+$('market').addEventListener('change',()=>{if(state.connected)connect();});
+$('window').addEventListener('change',()=>{if(state.connected)connect();else{state.window=Number($('window').value)||80;state.ticks=state.ticks.slice(-state.window);render();}});
+$('resetBtn').addEventListener('click',()=>{state.records=[];state.pending=null;render();});
+$('exportBtn').addEventListener('click',()=>{const rows=[['id','candidate_digit','actual_digit','result','leader_count','window_size','time'],...state.records.slice().reverse().map(x=>[x.id,x.pred,x.actual,x.win?'HIT':'MISS',x.count,x.window,x.time])];const csv=rows.map(row=>row.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\r\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='digit-radar-prediction-record.csv';a.click();URL.revokeObjectURL(url);});
+window.addEventListener('beforeunload',disconnect);
+render();
+})();
+</script></body></html>
