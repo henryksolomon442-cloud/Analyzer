@@ -143,16 +143,16 @@ function renderContracts(){
  $('contractGrid').innerHTML='<div class="contractcard"><strong>Matches / Differs</strong><div class="v">Match '+(nn?digits.join('/'):'—')+'</div><p>Leader observed share: '+share(Math.max(0,...counts2),nn)+'</p><p>Differs from a selected digit: '+(nn?share(nn-Math.max(...counts2),nn):'—')+' as historical complement only.</p><p>Current digit: '+(useScan.length?useScan[useScan.length-1].digit:'—')+'</p></div><div class="contractcard"><strong>Even / Odd</strong><div class="v">'+(nn?(e2>o2?'Even leads':o2>e2?'Odd leads':'Tie'):'—')+'</div><p>Even digits: '+share(e2,nn)+' ('+e2+')</p><p>Odd digits: '+share(o2,nn)+' ('+o2+')</p><p>Current parity: '+(useScan.length?(useScan[useScan.length-1].digit%2?'Odd':'Even'):'—')+'</p></div><div class="contractcard"><strong>Rise / Fall</strong><div class="v">'+(nn>1?direction:'—')+'</div><p>Rise transitions: '+share(up,Math.max(0,nn-1))+' ('+up+')</p><p>Fall transitions: '+share(down,Math.max(0,nn-1))+' ('+down+')</p><p>Unchanged: '+flat+'</p></div>';
 }
 function disconnect(){if(state.scanWs){try{state.scanWs.onclose=null;state.scanWs.close();}catch(e){}state.scanWs=null;}if(state.ws){try{state.ws.onclose=null;state.ws.close();}catch(e){}}state.ws=null;state.connected=false;state.pending=null;setStatus('Disconnected',false);showError('');}
-function connect(){
+function connect(overrideApp, fallbackUsed){
  disconnect();showError('');
  if(!('WebSocket' in window)){setStatus('WebSocket unavailable',false);showError('This browser does not support WebSocket connections. Try an updated Chrome browser.');return;}
- const app=$('appId').value.trim(),market=$('market').value;
+ const app=(overrideApp||$('appId').value).trim(),market=$('market').value;
  if(!/^[A-Za-z0-9_-]+$/.test(app)){showError('Enter the App ID exactly as issued by Deriv (letters and numbers only).');return;}
  state.window=Number($('window').value)||80;state.ticks=[];state.records=[];state.pending=null;state.lastQuote=null;state.lastDigit=null;state.market=market;render();
  setStatus('Connecting…',false);$('feedState').textContent='Opening WebSocket';
- let ws;try{ws=new WebSocket('wss://ws.derivws.com/websockets/v3?app_id='+encodeURIComponent(app));}catch(e){setStatus('Connection failed');showError('Could not create WebSocket: '+e.message);return;}state.ws=ws;
+ let ws;try{ws=new WebSocket('wss://ws.derivws.com/websockets/v3?app_id='+encodeURIComponent(app));}catch(e){setStatus('Connection failed');showError('Could not create WebSocket: '+e.message);return;}state.ws=ws;let opened=false;
  const connectTimeout=setTimeout(()=>{if(state.ws===ws&&ws.readyState!==WebSocket.OPEN){showError('Connection timed out. Check your internet connection and try again.');try{ws.close();}catch(e){}}},12000);
- ws.onopen=()=>{if(state.ws!==ws)return;clearTimeout(connectTimeout);state.connected=true;setStatus('Connected · loading history',true);ws.send(JSON.stringify({ticks_history:market,count:state.window,end:'latest',style:'ticks',subscribe:1,req_id:++state.req}));startMarketScan(app);};
+ ws.onopen=()=>{if(state.ws!==ws)return;opened=true;clearTimeout(connectTimeout);state.connected=true;setStatus(fallbackUsed?'Connected · test feed 1089': 'Connected · loading history',true);if(fallbackUsed)showError('Diagnostic fallback is active: Deriv test App ID 1089 connected, but your entered App ID did not. Live public market data can load, but this does not verify your own App ID.');ws.send(JSON.stringify({ticks_history:market,count:state.window,end:'latest',style:'ticks',subscribe:1,req_id:++state.req}));startMarketScan(app);};
  ws.onmessage=ev=>{if(state.ws!==ws)return;let data;try{data=JSON.parse(ev.data);}catch(e){return;}
   if(data.error){showError('Deriv API error: '+(data.error.message||'Unknown error')+' ('+(data.error.code||'no code')+')');if(data.error.code==='InvalidAppID'||data.error.code==='AuthorizationRequired'){setStatus('App ID error',false);}return;}
   if(data.msg_type==='history'){
@@ -163,13 +163,13 @@ function connect(){
    state.pending=null;
    // The loaded history is information already available before the next live tick.
    if(state.ticks.length>=state.window){const c=counts(),r=ranked(c),best=r.hot[0];state.pending={digit:best,count:c[best],window:state.ticks.length};}
-   render();setStatus('Live · '+market,true);$('feedState').textContent='History loaded; live stream subscribed';showError('');
+   render();setStatus(fallbackUsed?'Live · test feed 1089':'Live · '+market,true);$('feedState').textContent=fallbackUsed?'Live stream via test App ID 1089':'History loaded; live stream subscribed';if(!fallbackUsed)showError('');
   }else if(data.msg_type==='tick'){
    if(data.tick&&data.tick.symbol===state.market){onTick(data.tick.quote,data.tick.epoch,data.tick.pip_size);setStatus('Live · '+market,true);}
   }else if(data.msg_type==='ping'){}
  };
  ws.onerror=()=>{if(state.ws===ws){setStatus('WebSocket error',false);showError('The WebSocket failed. Check internet access, App ID, and whether the Deriv endpoint is reachable.');}};
- ws.onclose=ev=>{clearTimeout(connectTimeout);if(state.ws!==ws)return;state.connected=false;setStatus('Disconnected',false);$('feedState').textContent='Closed · code '+ev.code; if(ev.code!==1000)showError('Connection closed (code '+ev.code+'). Check your network and App ID, then reconnect.');};
+ ws.onclose=ev=>{clearTimeout(connectTimeout);if(state.ws!==ws)return;state.connected=false;setStatus('Disconnected',false);$('feedState').textContent='Closed · code '+ev.code; if(!opened && app!=='1089' && !fallbackUsed){showError('Your App ID connection failed before opening (code '+ev.code+'). Testing Deriv public test App ID 1089 to separate an App ID problem from a network/endpoint problem…');connect('1089',true);return;} if(ev.code!==1000)showError('Connection closed (code '+ev.code+'). '+(fallbackUsed?'Even the Deriv test App ID 1089 failed; this points to network/browser/endpoint access rather than proving your App ID is wrong.':'Check network and App ID, then reconnect.'));};
 }
 $('connectBtn').addEventListener('click',connect);$('disconnectBtn').addEventListener('click',disconnect);$('scanBtn').addEventListener('click',()=>{const app=$('appId').value.trim();if(!/^[A-Za-z0-9_-]+$/.test(app)){showError('Enter the App ID exactly as issued by Deriv first.');return;}state.window=Number($('window').value)||80;startMarketScan(app);});
 $('market').addEventListener('change',()=>{if(state.connected)connect();});
