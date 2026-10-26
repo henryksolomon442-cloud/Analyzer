@@ -1,0 +1,13 @@
+{
+  "name": "analyzer-deriv-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Separate WebSocket bridge for Analyzer Digit Frequency Radar public Deriv market data",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
