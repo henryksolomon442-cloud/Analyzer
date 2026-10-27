@@ -35,7 +35,7 @@
 (function(){
 const $=id=>document.getElementById(id);
 const SYMBOLS=[['1HZ10V','Volatility 10 (1s)'],['R_10','Volatility 10'],['1HZ25V','Volatility 25 (1s)'],['R_25','Volatility 25'],['1HZ50V','Volatility 50 (1s)'],['R_50','Volatility 50'],['1HZ75V','Volatility 75 (1s)'],['R_75','Volatility 75'],['1HZ100V','Volatility 100 (1s)'],['R_100','Volatility 100']];
-const ENDPOINTS=['wss://analyzer-deriv-bridge.onrender.com/feed'];
+const ENDPOINTS=['wss://ws.derivws.com/websockets/v3','wss://ws.binaryws.com/websockets/v3'];
 const state={ws:null,scanWs:null,scanReq:{},scanData:{},ticks:[],records:[],pending:null,connected:false,req:0,window:80,lastQuote:null,lastDigit:null,market:null,scanStarted:false,endpointIndex:0};
 function setStatus(text,live=false){$('statusText').textContent=text;$('statusDot').className='dot'+(live?' live':'');$('feedState').textContent=text;$('connectBtn').disabled=live;$('disconnectBtn').disabled=!live;}
 function showError(s){$('error').textContent=s||'';}
